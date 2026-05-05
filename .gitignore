@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.py4
+
+# Virtual environment
+.venv/
+
+# Database
+psit.db
+
+# Cache
+cache/
+
+# Word temp files
+~$*.docx
+
+# SQLite
+*.db
