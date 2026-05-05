@@ -230,3 +230,57 @@ with st.expander('News Signals -- Endpoints / STAT  (Tier 3 Overlay)', expanded=
     else:
         st.dataframe(news_df, use_container_width=True)
         st.caption(f'{len(news_df)} news signals shown')
+st.divider()
+
+# MODULE 7: Evidence Claims
+st.header("Evidence Claims")
+st.caption(
+    "Citation validation layer | Claims are accepted only if they include a whitelisted source URL"
+)
+
+with get_connection() as conn:
+    evidence_df = pd.read_sql_query(
+        """
+        SELECT claim_type, source_tier, source_name, claim_text,
+               evidence_date, source_url, status, validation_message
+        FROM evidence_claims
+        ORDER BY id DESC
+        LIMIT 100
+        """,
+        conn,
+    )
+
+if evidence_df.empty:
+    st.info("No evidence claims have been built yet. Run: python build_claims.py")
+else:
+    status_filter = st.selectbox(
+        "Filter by Validation Status",
+        ["All"] + sorted(evidence_df["status"].dropna().unique().tolist()),
+        key="evidence_status",
+    )
+
+    filtered_evidence = evidence_df.copy()
+    if status_filter != "All":
+        filtered_evidence = filtered_evidence[filtered_evidence["status"] == status_filter]
+
+    valid_count = len(evidence_df[evidence_df["status"] == "validated"])
+    rejected_count = len(evidence_df[evidence_df["status"] == "rejected"])
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Evidence Claims", len(evidence_df))
+    c2.metric("Validated", valid_count)
+    c3.metric("Rejected", rejected_count)
+
+    st.dataframe(
+        filtered_evidence.rename(columns={
+            "claim_type": "Claim Type",
+            "source_tier": "Source Tier",
+            "source_name": "Source",
+            "claim_text": "Claim",
+            "evidence_date": "Evidence Date",
+            "source_url": "Source URL",
+            "status": "Validation Status",
+            "validation_message": "Validation Message",
+        }),
+        width="stretch",
+    )
