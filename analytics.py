@@ -50,3 +50,66 @@ def pipeline_velocity(df: pd.DataFrame) -> dict:
             'sponsor', 'last_update_date', 'source_url'
         ]].head(25).to_dict('records'),
     }
+
+
+def differentiation_signals(df: pd.DataFrame) -> pd.DataFrame:
+    """Structured differentiation table for competing ADC trials.
+    Fields absent from the public record display as 'Not reported'.
+    No fields are inferred or imputed."""
+    COLS = [
+        'nct_id', 'brief_title', 'overall_status', 'phase',
+        'sponsor', 'conditions', 'interventions',
+        'start_date', 'primary_completion_date', 'source_url'
+    ]
+
+    out = df[COLS].copy()
+
+    out['primary_condition'] = out['conditions'].apply(
+    lambda x: str(x).split('|')[0].strip() if pd.notna(x) and str(x).strip() else 'Not reported'
+)
+
+    out['primary_intervention'] = out['interventions'].apply(
+    lambda x: str(x).split('|')[0].strip() if pd.notna(x) and str(x).strip() else 'Not reported'
+)
+
+    for col in ['phase', 'sponsor', 'start_date', 'primary_completion_date']:
+        out[col] = out[col].replace('', 'Not reported').fillna('Not reported')
+
+    return (
+        out[['nct_id', 'brief_title', 'overall_status', 'phase',
+             'sponsor', 'primary_condition', 'primary_intervention',
+             'start_date', 'primary_completion_date', 'source_url']]
+        .sort_values(['sponsor', 'phase'])
+        .reset_index(drop=True)
+    )
+
+
+def catalyst_calendar(df: pd.DataFrame, months_ahead: int = 18) -> pd.DataFrame:
+    """Upcoming primary completion dates sorted forward in time.
+    Bucketed by horizon. Each row links to its source trial record.
+    Trials beyond months_ahead or with missing dates are excluded."""
+    df = df.copy()
+    df['pcd'] = pd.to_datetime(df['primary_completion_date'], errors='coerce')
+
+    today = pd.Timestamp.now()
+    cutoff = today + pd.DateOffset(months=months_ahead)
+    upcoming = df[(df['pcd'] >= today) & (df['pcd'] <= cutoff)].copy()
+    upcoming = upcoming.sort_values('pcd')
+
+    def _horizon(dt):
+        if pd.isna(dt):
+            return 'Unknown'
+        months = (dt.year - today.year) * 12 + (dt.month - today.month)
+        if months <= 6:
+            return 'Near-term  (< 6 months)'
+        elif months <= 12:
+            return 'Mid-term   (6-12 months)'
+        else:
+            return 'Long-term  (12-18 months)'
+
+    upcoming['horizon'] = upcoming['pcd'].apply(_horizon)
+
+    return upcoming[[
+        'nct_id', 'brief_title', 'sponsor', 'phase',
+        'overall_status', 'primary_completion_date', 'horizon', 'source_url'
+    ]].reset_index(drop=True)

@@ -6,7 +6,13 @@ Design principle: every metric traces to a public source record.
 import streamlit as st
 import pandas as pd
 from db import get_connection
-from analytics import load_trials_df, pipeline_density, pipeline_velocity
+from analytics import (
+    load_trials_df,
+    pipeline_density,
+    pipeline_velocity,
+    differentiation_signals,
+    catalyst_calendar,
+)
  
 st.set_page_config(
     page_title='Pharma Strategic Intelligence | ADC Oncology',
@@ -46,6 +52,8 @@ st.caption(
 df      = load_trials_df()
 density = pipeline_density(df)
 velocity = pipeline_velocity(df)
+diff_df = differentiation_signals(df)
+cat_df = catalyst_calendar(df)
  
 # ── Summary metrics ───────────────────────────────────────────────────────
 c1, c2, c3 = st.columns(3)
@@ -109,3 +117,70 @@ if recent:
     )
 else:
     st.info('No trials updated in the last 90 days.')
+
+st.divider()
+
+# MODULE 3: Differentiation Signals
+st.header('Differentiation Signals')
+st.caption('Source: ClinicalTrials.gov | Fields absent from the public record show as Not reported')
+
+col_a, col_b = st.columns(2)
+with col_a:
+    sponsors = ['All'] + sorted(diff_df['sponsor'].unique().tolist())
+    sel_sponsor = st.selectbox('Filter by Sponsor', sponsors, key='diff_sponsor')
+with col_b:
+    phases = ['All'] + sorted(diff_df['phase'].unique().tolist())
+    sel_phase = st.selectbox('Filter by Phase', phases, key='diff_phase')
+
+filtered_diff = diff_df.copy()
+if sel_sponsor != 'All':
+    filtered_diff = filtered_diff[filtered_diff['sponsor'] == sel_sponsor]
+if sel_phase != 'All':
+    filtered_diff = filtered_diff[filtered_diff['phase'] == sel_phase]
+
+st.dataframe(
+    filtered_diff.rename(columns={
+        'nct_id': 'NCT ID',
+        'brief_title': 'Trial Title',
+        'overall_status': 'Status',
+        'phase': 'Phase',
+        'sponsor': 'Sponsor',
+        'primary_condition': 'Primary Condition',
+        'primary_intervention': 'Primary Intervention',
+        'start_date': 'Start',
+        'primary_completion_date': 'Primary Completion',
+        'source_url': 'Source',
+    }),
+    use_container_width=True
+)
+st.caption(f'{len(filtered_diff)} trials shown')
+
+st.divider()
+
+# MODULE 4: Catalyst Calendar
+st.header('Catalyst Calendar')
+st.caption('Upcoming primary completion dates (next 18 months) | Source: ClinicalTrials.gov')
+
+near_count = len(cat_df[cat_df['horizon'].str.startswith('Near')])
+c1, c2, c3 = st.columns(3)
+c1.metric('Total Upcoming Readouts (18 mo)', len(cat_df))
+c2.metric('Near-term (< 6 months)', near_count)
+c3.metric('Mid-term (6-12 months)', len(cat_df[cat_df['horizon'].str.startswith('Mid')]))
+
+horizons = ['All'] + sorted(cat_df['horizon'].unique().tolist())
+sel_hz = st.selectbox('Filter by Horizon', horizons, key='cat_hz')
+filtered_cat = cat_df if sel_hz == 'All' else cat_df[cat_df['horizon'] == sel_hz]
+
+st.dataframe(
+    filtered_cat.rename(columns={
+        'nct_id': 'NCT ID',
+        'brief_title': 'Trial Title',
+        'sponsor': 'Sponsor',
+        'phase': 'Phase',
+        'overall_status': 'Status',
+        'primary_completion_date': 'Primary Completion',
+        'horizon': 'Horizon',
+        'source_url': 'Source',
+    }),
+    use_container_width=True
+)
