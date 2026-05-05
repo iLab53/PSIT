@@ -184,3 +184,49 @@ st.dataframe(
     }),
     use_container_width=True
 )
+
+st.divider()
+
+# OVERLAY: Regulatory Signals (Tier 2)
+with st.expander('Regulatory Signals -- FDA / EMA  (Tier 2 Overlay)', expanded=False):
+    st.caption(
+        'Sources: FDA press releases, EMA news RSS | Filtered for ADC-oncology relevance | '
+        'Tier 2 overlay -- supplements but does not replace structured trial data'
+    )
+    with get_connection() as conn:
+        reg_df = pd.read_sql_query(
+    """
+    SELECT source_name, title, summary, published, source_url, signal_tier
+    FROM regulatory_signals
+    ORDER BY id DESC
+    LIMIT 50
+    """,
+    conn
+)
+    if reg_df.empty:
+        st.info('No regulatory signals loaded. Run: python overlay_refresh.py')
+    else:
+        st.dataframe(reg_df, use_container_width=True)
+        st.caption(f'{len(reg_df)} regulatory signals shown')
+
+# OVERLAY: News Signals (Tier 3)
+with st.expander('News Signals -- Endpoints / STAT  (Tier 3 Overlay)', expanded=False):
+    st.caption(
+        'Sources: Endpoints News, STAT News (public RSS) | Filtered for ADC-oncology relevance | '
+        'Tier 3 overlay -- contextual signal only, not an analytical claim'
+    )
+    with get_connection() as conn:
+        news_df = pd.read_sql_query(
+    """
+    SELECT source_name, title, summary, published, source_url, signal_tier
+    FROM news_signals
+    ORDER BY id DESC
+    LIMIT 50
+    """,
+    conn
+    )
+    if news_df.empty:
+        st.info('No news signals loaded. Run: python overlay_refresh.py')
+    else:
+        st.dataframe(news_df, use_container_width=True)
+        st.caption(f'{len(news_df)} news signals shown')

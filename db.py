@@ -2,35 +2,13 @@
 PSIT -- SQLite connection, initialization, and insert helpers.
 """
 import sqlite3, json, pathlib
-from models import Trial
-
-CREATE_TRIALS = """
-CREATE TABLE IF NOT EXISTS trials (
-    nct_id TEXT PRIMARY KEY,
-    brief_title TEXT,
-    overall_status TEXT,
-    phase TEXT,
-    sponsor TEXT,
-    conditions TEXT,
-    interventions TEXT,
-    start_date TEXT,
-    primary_completion_date TEXT,
-    last_update_date TEXT,
-    study_type TEXT,
-    enrollment TEXT,
-    source_url TEXT,
-    pull_timestamp TEXT
-)"""
-
-CREATE_SOURCE_META = """
-CREATE TABLE IF NOT EXISTS source_meta (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_name TEXT,
-    source_url TEXT,
-    query_params TEXT,
-    pull_timestamp TEXT,
-    record_count INTEGER
-)"""
+from schema import (
+    Trial,
+    CREATE_TRIALS,
+    CREATE_SOURCE_META,
+    CREATE_REGULATORY_SIGNALS,
+    CREATE_NEWS_SIGNALS,
+)
 
 DB_PATH = pathlib.Path('psit.db')
 
@@ -43,6 +21,8 @@ def init_db():
     with get_connection() as conn:
         conn.execute(CREATE_TRIALS)
         conn.execute(CREATE_SOURCE_META)
+        conn.execute(CREATE_REGULATORY_SIGNALS)
+        conn.execute(CREATE_NEWS_SIGNALS)
         conn.commit()
     print('  Database initialized: psit.db')
 
@@ -73,3 +53,55 @@ def log_source_pull(
             (source_name, source_url, query_params, pull_ts, count)
         )
         conn.commit()
+
+
+def insert_regulatory_signals(signals: list[dict]):
+    if not signals:
+        print('  No regulatory signals to insert.')
+        return
+
+    rows = [(
+        s['source_name'],
+        s['source_url'],
+        s['title'],
+        s['summary'],
+        s['published'],
+        s['pull_timestamp'],
+        s['signal_tier'],
+    ) for s in signals]
+
+    with get_connection() as conn:
+        conn.executemany(
+            '''INSERT INTO regulatory_signals
+               (source_name, source_url, title, summary, published,
+                pull_timestamp, signal_tier) VALUES (?,?,?,?,?,?,?)''',
+            rows
+        )
+        conn.commit()
+    print(f'  Inserted {len(rows)} regulatory signals.')
+
+
+def insert_news_signals(signals: list[dict]):
+    if not signals:
+        print('  No news signals to insert.')
+        return
+
+    rows = [(
+        s['source_name'],
+        s['source_url'],
+        s['title'],
+        s['summary'],
+        s['published'],
+        s['pull_timestamp'],
+        s['signal_tier'],
+    ) for s in signals]
+
+    with get_connection() as conn:
+        conn.executemany(
+            '''INSERT INTO news_signals
+               (source_name, source_url, title, summary, published,
+                pull_timestamp, signal_tier) VALUES (?,?,?,?,?,?,?)''',
+            rows
+        )
+        conn.commit()
+    print(f'  Inserted {len(rows)} news signals.')
