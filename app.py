@@ -5,7 +5,8 @@ Design principle: every metric traces to a public source record.
 """
 import streamlit as st
 import pandas as pd
-from db import get_connection
+from narrator import generate_summary
+from db import get_connection, insert_validated_claims, load_latest_claims
 from analytics import (
     load_trials_df,
     pipeline_density,
@@ -60,6 +61,37 @@ c1, c2, c3 = st.columns(3)
 c1.metric('Total Registered Trials',   density['total_trials'])
 c2.metric('Active Sponsors',           len(density['sponsor_leaderboard']))
 c3.metric('Updated in Last 90 Days',   velocity['recent_count'])
+
+# Strategic Summary (validated claims from narrator)
+st.header('Strategic Summary')
+st.caption(
+    'LLM-generated summary of ClinicalTrials.gov structured data. '
+    'Every claim passed schema validation and source whitelisting before display.'
+)
+
+cached = load_latest_claims(n=6)
+
+if st.button('Regenerate Summary', key='regen'):
+    with st.spinner('Generating validated summary...'):
+        new_claims = generate_summary(density, row['pull_timestamp'])
+        if new_claims:
+            insert_validated_claims(new_claims)
+            cached = [vars(c) for c in new_claims]
+        else:
+            st.warning('No validated claims generated. Check narrator logs.')
+
+if cached:
+    for item in cached:
+        st.markdown(
+            f"- {item['claim_text']} "
+            f"([{item['source_name']}]({item['source_url']}))",
+            unsafe_allow_html=False
+        )
+else:
+    st.info(
+        'No summary available. Click Regenerate Summary to generate '
+        'a citation-backed strategic overview from the current trial data.'
+    )
  
 st.divider()
  

@@ -70,3 +70,15 @@ CREATE TABLE IF NOT EXISTS news_signals (
     pull_timestamp TEXT NOT NULL,
     signal_tier TEXT DEFAULT 'TIER_3'
 )"""
+
+CREATE_VALIDATED_CLAIMS = """
+CREATE TABLE IF NOT EXISTS validated_claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_text TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_name TEXT NOT NULL,
+    evidence_type TEXT NOT NULL,
+    pull_timestamp TEXT NOT NULL,
+    nct_id TEXT,
+    created_at TEXT NOT NULL
+)"""

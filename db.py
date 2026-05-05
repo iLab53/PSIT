@@ -8,6 +8,7 @@ from schema import (
     CREATE_SOURCE_META,
     CREATE_REGULATORY_SIGNALS,
     CREATE_NEWS_SIGNALS,
+    CREATE_VALIDATED_CLAIMS,
 )
 
 DB_PATH = pathlib.Path('psit.db')
@@ -23,6 +24,7 @@ def init_db():
         conn.execute(CREATE_SOURCE_META)
         conn.execute(CREATE_REGULATORY_SIGNALS)
         conn.execute(CREATE_NEWS_SIGNALS)
+        conn.execute(CREATE_VALIDATED_CLAIMS)
         conn.commit()
     print('  Database initialized: psit.db')
 
@@ -105,3 +107,37 @@ def insert_news_signals(signals: list[dict]):
         )
         conn.commit()
     print(f'  Inserted {len(rows)} news signals.')
+
+
+def insert_validated_claims(claims: list) -> None:
+    import datetime
+
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    rows = [(
+        c.claim_text,
+        c.source_url,
+        c.source_name,
+        c.evidence_type,
+        c.pull_timestamp,
+        c.nct_id,
+        now,
+    ) for c in claims]
+
+    with get_connection() as conn:
+        conn.executemany(
+            '''INSERT INTO validated_claims
+               (claim_text, source_url, source_name, evidence_type,
+                pull_timestamp, nct_id, created_at) VALUES (?,?,?,?,?,?,?)''',
+            rows
+        )
+        conn.commit()
+    print(f'  Cached {len(rows)} validated claims.')
+
+
+def load_latest_claims(n: int = 6) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            'SELECT * FROM validated_claims ORDER BY id DESC LIMIT ?',
+            (n,)
+        ).fetchall()
+    return [dict(r) for r in rows]
