@@ -165,8 +165,7 @@ with tab1:
     st.divider()
 
     # Trial Explorer
-    with get_connection() as conn:
-        explorer_claims = load_latest_claims(conn)
+    explorer_claims = load_latest_claims()
     nct_ids = [c.nct_id for c in explorer_claims if c.nct_id]
     with get_connection() as conn:
         render_trial_explorer(conn, nct_ids)
@@ -325,8 +324,7 @@ with tab4:
 # TAB 5: Evidence
 with tab5:
     st.subheader('Evidence Table -- All Validated Claims')
-    with get_connection() as conn:
-        claims = load_latest_claims(conn)
+    claims = load_latest_claims()
     filtered_claims = apply_filters(claims, sponsor_query, selected_tiers)
     render_evidence_table(filtered_claims)
     if filtered_claims:
