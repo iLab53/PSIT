@@ -316,3 +316,34 @@ else:
         }),
         width="stretch",
     )
+# Add to imports
+from evidence_table import render_evidence_table
+from db import load_latest_claims
+from datetime import datetime
+ 
+# Update tab list
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    'Overview', 'Signals', 'Regulatory', 'Summary', 'Evidence'
+])
+ 
+# New Evidence tab block
+with tab5:
+    st.subheader('Evidence Table -- All Validated Claims')
+    claims = load_latest_claims(conn)
+    render_evidence_table(claims)
+    if claims:
+        df_export = pd.DataFrame([{
+            'tier':   c.evidence_type,   'source': c.source_name,
+            'claim':  c.claim_text,       'url':    c.source_url,
+            'nct_id': c.nct_id or '',     'pulled': c.pull_timestamp,
+        } for c in claims])
+        csv_bytes = df_export.to_csv(index=False).encode('utf-8')
+        today = datetime.now().strftime('%Y%m%d')
+        st.download_button(
+            label='Export Evidence to CSV',
+            data=csv_bytes,
+            file_name=f'psit_evidence_{today}.csv',
+            mime='text/csv',
+            use_container_width=True,
+        )
+
