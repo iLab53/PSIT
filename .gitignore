@@ -7,7 +7,6 @@ __pycache__/
 .venv/
 
 # Database
-psit.db
 
 # Cache
 cache/
@@ -16,7 +15,6 @@ cache/
 ~$*.docx
 
 # SQLite
-*.db
 
 # Environment variables
 .env
