@@ -17,3 +17,9 @@ cache/
 
 # SQLite
 *.db
+
+# Environment variables
+.env
+
+# Streamlit secrets (never commit real keys)
+.streamlit/secrets.toml

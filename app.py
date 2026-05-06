@@ -16,6 +16,7 @@ from analytics import (
 )
 from evidence_table import render_evidence_table
 from db import load_latest_claims
+from trial_explorer import render_trial_explorer
 
 st.set_page_config(
     page_title='Pharma Strategic Intelligence | ADC Oncology',
@@ -24,16 +25,54 @@ st.set_page_config(
 )
 
 # Header
-st.title('Pharmaceutical Strategic Intelligence Tool')
+st.title('Pharma Strategic Intelligence | ADC Oncology')
 st.markdown('**Therapeutic Area:** Antibody-Drug Conjugates (ADCs) in Oncology')
 
 # Scope disclaimer
 st.info(
-    '**Scope:** This dashboard reflects publicly registered clinical trials '
-    'from ClinicalTrials.gov. It does not include proprietary pipeline data, '
-    'revenue forecasts, or investment recommendations. '
-    'Every displayed metric links to a verifiable public source.'
+    'Data sources: ClinicalTrials.gov, FDA, EMA, and public pharma news RSS feeds. '
+    'Every claim displayed is linked to its source URL -- no URL, no claim. '
+    'This tool does not forecast revenue, predict trial outcomes, or access proprietary data. '
+    'For portfolio demonstration only. Not investment advice.',
+    icon='🛡️',
 )
+
+# Sidebar filters
+with st.sidebar:
+    st.header('Filters')
+    selected_phase = st.selectbox(
+        'Trial Phase',
+        ['All', 'Phase 1', 'Phase 2', 'Phase 3', 'Phase 1/2', 'Phase 2/3'],
+    )
+    sponsor_query = st.text_input('Sponsor Search', placeholder='e.g. AstraZeneca')
+    selected_tiers = st.multiselect(
+        'Evidence Tiers',
+        options=['T1 - Trial Registry', 'T2 - Regulatory', 'T3 - News Signal', 'LLM Summary'],
+        default=['T1 - Trial Registry', 'T2 - Regulatory', 'T3 - News Signal', 'LLM Summary'],
+    )
+    st.markdown('---')
+    if st.button('Refresh Data', use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+
+def apply_filters(claims, sponsor_query, selected_tiers):
+    TIER_MAP = {
+        'T1 - Trial Registry': 'STRUCTURED_TRIAL',
+        'T2 - Regulatory':     'REGULATORY',
+        'T3 - News Signal':    'NEWS',
+        'LLM Summary':         'SUMMARY',
+    }
+    allowed = {TIER_MAP[t] for t in selected_tiers if t in TIER_MAP}
+    filtered = [c for c in claims if c.evidence_type in allowed]
+    if sponsor_query.strip():
+        q = sponsor_query.strip().lower()
+        filtered = [
+            c for c in filtered
+            if q in c.claim_text.lower() or q in c.source_name.lower()
+        ]
+    return filtered
+
 
 # Data freshness guard
 with get_connection() as conn:
@@ -123,6 +162,15 @@ with tab1:
     else:
         st.info('No trials updated in the last 90 days.')
 
+    st.divider()
+
+    # Trial Explorer
+    with get_connection() as conn:
+        explorer_claims = load_latest_claims(conn)
+    nct_ids = [c.nct_id for c in explorer_claims if c.nct_id]
+    with get_connection() as conn:
+        render_trial_explorer(conn, nct_ids)
+
 # TAB 2: Signals
 with tab2:
     st.header('Differentiation Signals')
@@ -167,8 +215,8 @@ with tab2:
     near_count = len(cat_df[cat_df['horizon'].str.startswith('Near')])
     c1, c2, c3 = st.columns(3)
     c1.metric('Total Upcoming Readouts (18 mo)', len(cat_df))
-    c2.metric('Near-term (< 6 months)', near_count)
-    c3.metric('Mid-term (6-12 months)', len(cat_df[cat_df['horizon'].str.startswith('Mid')]))
+    c2.metric('Near-term (< 6 months)',           near_count)
+    c3.metric('Mid-term (6-12 months)',            len(cat_df[cat_df['horizon'].str.startswith('Mid')]))
 
     horizons = ['All'] + sorted(cat_df['horizon'].unique().tolist())
     sel_hz = st.selectbox('Filter by Horizon', horizons, key='cat_hz')
@@ -279,8 +327,9 @@ with tab5:
     st.subheader('Evidence Table -- All Validated Claims')
     with get_connection() as conn:
         claims = load_latest_claims(conn)
-    render_evidence_table(claims)
-    if claims:
+    filtered_claims = apply_filters(claims, sponsor_query, selected_tiers)
+    render_evidence_table(filtered_claims)
+    if filtered_claims:
         df_export = pd.DataFrame([{
             'tier':   c.evidence_type,
             'source': c.source_name,
@@ -288,7 +337,7 @@ with tab5:
             'url':    c.source_url,
             'nct_id': c.nct_id or '',
             'pulled': c.pull_timestamp,
-        } for c in claims])
+        } for c in filtered_claims])
         csv_bytes = df_export.to_csv(index=False).encode('utf-8')
         today = datetime.now().strftime('%Y%m%d')
         st.download_button(
