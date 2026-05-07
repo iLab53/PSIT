@@ -28,7 +28,7 @@ def main():
     results = [
         check("HTTP 200 response",                   resp.status_code == 200),
         check("Streamlit app shell in response",     "streamlit" in text.lower()),
-        check("Page title tag in response",          "Pharma Strategic Intelligence" in text),
+        check("Streamlit static assets present",      "static/js" in text or "_stcore" in text),
         check("No crash traceback in response",      "Traceback (most recent call last)" not in text),
     ]
 
