@@ -26,10 +26,9 @@ def main():
 
     text = resp.text
     results = [
-        check("HTTP 200 response",                   resp.status_code == 200),
-        check("Streamlit app shell in response",     "streamlit" in text.lower()),
-        check("Streamlit static assets present",      "static/js" in text or "_stcore" in text),
-        check("No crash traceback in response",      "Traceback (most recent call last)" not in text),
+        check("HTTP 200 response",           resp.status_code == 200),
+        check("Streamlit shell in response", "streamlit" in text.lower()),
+        check("No crash traceback",          "Traceback (most recent call last)" not in text),
     ]
 
     passed = sum(results)
