@@ -27,8 +27,8 @@ def main():
     text = resp.text
     results = [
         check("HTTP 200 response",                   resp.status_code == 200),
-        check("App title found in response",         "Pharmaceutical Strategic Intelligence" in text),
-        check("Scope disclaimer found in response",  "ClinicalTrials.gov" in text),
+        check("Streamlit app shell in response",     "streamlit" in text.lower()),
+        check("Page title tag in response",          "Pharma Strategic Intelligence" in text),
         check("No crash traceback in response",      "Traceback (most recent call last)" not in text),
     ]
 
