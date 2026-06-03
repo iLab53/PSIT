@@ -114,8 +114,8 @@ def render_ispor_tab(conn: sqlite3.Connection) -> None:
                     f"🎯 **Targets:** {row['target_tags'] or '—'}"
                 )
                 if row.get("abstract_text"):
-                    with st.expander("View extracted text"):
-                        st.text(row["abstract_text"][:800])
+                    st.caption("Extracted text:")
+                    st.text(row["abstract_text"][:600])
                 st.divider()
 
     # ── Full table ─────────────────────────────────────────────────────────────
