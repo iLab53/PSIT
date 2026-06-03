@@ -17,6 +17,8 @@ from analytics import (
 from evidence_table import render_evidence_table
 from db import load_latest_claims
 from trial_explorer import render_trial_explorer
+from ispor_tab import render_ispor_tab
+from archetype_tab import render_archetype_tab
 
 st.set_page_config(
     page_title='Pharma Strategic Intelligence | ADC Oncology',
@@ -104,8 +106,9 @@ c2.metric('Active Sponsors',          len(density['sponsor_leaderboard']))
 c3.metric('Updated in Last 90 Days',  velocity['recent_count'])
 
 # Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    'Overview', 'Signals', 'Regulatory', 'Summary', 'Evidence'
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    'Overview', 'Signals', 'Regulatory', 'Summary', 'Evidence',
+    'HEOR Intelligence', 'Company Archetypes'
 ])
 
 # TAB 1: Overview
@@ -345,3 +348,13 @@ with tab5:
             mime='text/csv',
             use_container_width=True,
         )
+
+# TAB 6: HEOR Intelligence
+with tab6:
+    with get_connection() as conn:
+        render_ispor_tab(conn)
+
+# TAB 7: Company Archetypes
+with tab7:
+    with get_connection() as conn:
+        render_archetype_tab(conn)
